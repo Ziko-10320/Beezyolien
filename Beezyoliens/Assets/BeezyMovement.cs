@@ -15,7 +15,7 @@ public class BeezyMovement : MonoBehaviour
     [Header("GroundCheck Settings")]
     public LayerMask groundLayer;
     public Transform groundCheckPoint;
-    public float groundCheckRadius = 0.2f;
+    public float groundCheckRadius =0.2f;
     private bool isGrounded = false;
 
     [Header("Slide Settings")]
@@ -27,6 +27,7 @@ public class BeezyMovement : MonoBehaviour
     [Header("References")]
     public Animator animator;
     public ParticleSystem landDust;
+    public ParticleSystem jumpDust;
 
     private Rigidbody2D rb;
     private float targetSpeed;
@@ -70,6 +71,11 @@ public class BeezyMovement : MonoBehaviour
                 rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
                 animator.SetTrigger("jump");
                 isJumping = true;
+                // Play jump dust
+                if (jumpDust != null)
+                {
+                    jumpDust.Play();
+                }
             }
         }
 
@@ -101,7 +107,7 @@ public class BeezyMovement : MonoBehaviour
                     landDust.Play();
                 }
 
-                // Reset after short delay
+                // Reset after short delay;
                 Invoke(nameof(ResetLanding), 0.1f);
 
                 wasFalling = false;
@@ -112,9 +118,9 @@ public class BeezyMovement : MonoBehaviour
                 animator.SetBool("isLanding", false);
             }
             void ResetLanding()
-            {
-                animator.SetBool("isLanding", false);
-            }
+{
+    animator.SetBool("isLanding", false);
+}
         }
     }
 
