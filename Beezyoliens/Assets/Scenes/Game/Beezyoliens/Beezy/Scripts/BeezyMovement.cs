@@ -71,10 +71,13 @@ public class BeezyMovement : MonoBehaviour
     public bool isFacingRight = true;
     public bool isTouchingWall = false;
     private bool wasFalling = false;
+    
+    private BeezyAttack PlayerAttack;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        PlayerAttack = GetComponent<BeezyAttack>(); // This line was missing
         isFacingRight = startsFacingRight;
 
         // Set dust flip to (0, 0) initially (match editor)
@@ -100,7 +103,7 @@ public class BeezyMovement : MonoBehaviour
     void Update()
     {
         // Only allow input if NOT sliding or dashing
-        if (!isSliding && !isDashing)
+        if (!isSliding && !isDashing && !PlayerAttack.isAttacking)
         {
             // Input Handling
             moveDirection = Input.GetAxisRaw("Horizontal");
@@ -244,6 +247,13 @@ public class BeezyMovement : MonoBehaviour
 
     void FixedUpdate()
     {
+
+        // Skip all movement logic if attacking
+        if (PlayerAttack != null && PlayerAttack.isAttacking)
+        {
+            return;
+        }
+
         // Ground Check
         isGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
 
@@ -261,7 +271,7 @@ public class BeezyMovement : MonoBehaviour
         currentSpeed = Mathf.Lerp(currentSpeed, targetSpeed, Time.fixedDeltaTime / accelerationTime);
 
         // Apply movement only if not sliding or dashing
-        if (!isSliding && !isDashing)
+        if (!isSliding && !isDashing && !PlayerAttack.isAttacking)
         {
             rb.velocity = new Vector2(moveDirection * currentSpeed, rb.velocity.y);
         }
@@ -383,6 +393,8 @@ public class BeezyMovement : MonoBehaviour
             renderer.flip = new Vector2(targetFlipX, 0);
         }
     }
+   
+
 
     void ResetLanding()
     {

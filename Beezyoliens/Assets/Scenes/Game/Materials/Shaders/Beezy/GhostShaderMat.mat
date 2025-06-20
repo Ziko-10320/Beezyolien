@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-3903024184398289548
+--- !u!114 &-8492268956311256261
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: OutlineShader Mat
-  m_Shader: {fileID: -6465566751694194690, guid: 94313e7ccc266364c8dbba5bfbf02631, type: 3}
+  m_Name: GhostShaderMat
+  m_Shader: {fileID: -6465566751694194690, guid: 543cb34b75d6508488840b69b9b73ca0, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -36,10 +36,6 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _MainTex:
-        m_Texture: {fileID: -8328923581568760697, guid: eb3707be52d2d1746ab404774f9f46c0, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -53,7 +49,13 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _FresnelPower: 0.78
+    - _InteriorSpread: 3.53
+    - _QueueControl: 0
+    - _QueueOffset: 0
     m_Colors:
-    - _Color: {r: 0, g: 1.6770133, b: 25.665455, a: 1}
+    - _FresnalColor: {r: 12.075479, g: 11.200789, b: 0, a: 1}
+    - _InteriorColor: {r: 0, g: 0.36572245, b: 2.4087293, a: 1}
+    - _InteriorPos: {r: 1.65, g: 0.56, b: 0.75, a: 0}
   m_BuildTextureStacks: []
