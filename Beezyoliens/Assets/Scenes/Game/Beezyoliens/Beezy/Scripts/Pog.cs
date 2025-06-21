@@ -65,7 +65,7 @@ public class PogController : MonoBehaviour
         // Check if pressing X
         bool xPressed = Input.GetKeyDown(KeyCode.X);
 
-        if (xPressed && isHoldingUp && !isPogging)
+        if (xPressed && isHoldingUp)
         {
             TriggerUpwardAttack();
         }

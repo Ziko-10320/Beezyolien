@@ -63,6 +63,13 @@ public class BeezyMovement : MonoBehaviour
     public ParticleSystem DashPoint;
     public bool startsFacingRight = true;
 
+    [Header("Diagonal Jump Settings")]
+    public float diagonalJumpXForce = 6f; // Horizontal force
+    public float diagonalJumpYForce = 8f; // Vertical force
+    public float diagonalJumpDuration = 0.3f; // How long the jump lasts
+    private bool isDiagonalJumping = false;
+    private float diagonalJumpTimer = 0f;
+
     private Rigidbody2D rb;
     private float targetSpeed;
     private float currentSpeed;
@@ -102,6 +109,13 @@ public class BeezyMovement : MonoBehaviour
 
     void Update()
     {
+        // Slide interrupt with diagonal jump
+        if (Input.GetKeyDown(KeyCode.Space) && isSliding)
+        {
+            Debug.Log("🚀 Diagonal Jump Triggered!");
+            StartDiagonalJump();
+        }
+       
         // Only allow input if NOT sliding or dashing
         if (!isSliding && !isDashing && !PlayerAttack.isAttacking)
         {
@@ -137,11 +151,13 @@ public class BeezyMovement : MonoBehaviour
                 }
             }
         }
-
+        
         // Slide Input
         if (Input.GetKeyDown(KeyCode.C) && isGrounded && !isSliding)
         {
-            Debug.Log("Slide key pressed and conditions met");
+
+           
+        Debug.Log("Slide key pressed and conditions met");
             StartSlide();
 
             // Play slide burst dust
@@ -292,6 +308,25 @@ public class BeezyMovement : MonoBehaviour
             }
         }
 
+        // Diagonal Jump Logic
+        if (isDiagonalJumping)
+        {
+            diagonalJumpTimer += Time.fixedDeltaTime;
+            if (diagonalJumpTimer < diagonalJumpDuration)
+            {
+                // Lock horizontal input during jump
+                moveDirection = 0f;
+                // Optionally maintain the initial velocity or keep updating it
+                float dirX = isFacingRight ? 1 : -1;
+                rb.velocity = new Vector2(dirX * diagonalJumpXForce, diagonalJumpYForce);
+            }
+            else
+            {
+                isDiagonalJumping = false;
+                canFlip = true; // Re-enable flipping after jump ends
+            }
+        }
+
         // Air Dash Movement
         if (isDashing)
         {
@@ -337,6 +372,24 @@ public class BeezyMovement : MonoBehaviour
         Debug.Log("Slide triggered");
     }
 
+    void StartDiagonalJump()
+    {
+        Debug.Log("🚀 Starting Diagonal Jump!");
+        isSliding = false;
+        animator.SetTrigger("diagonalJump"); // Make sure this trigger exists
+        isDiagonalJumping = true;
+        diagonalJumpTimer = 0f;
+
+        // Determine horizontal direction
+        float dirX = isFacingRight ? 1 : -1;
+
+        // Apply both X and Y forces
+        Vector2 jumpVelocity = new Vector2(dirX * diagonalJumpXForce, diagonalJumpYForce);
+        rb.velocity = jumpVelocity;
+
+        // Disable flip and movement during jump
+        canFlip = false;
+    }
     void StartAirDash(bool upwardDash)
     {
         isDashing = true;

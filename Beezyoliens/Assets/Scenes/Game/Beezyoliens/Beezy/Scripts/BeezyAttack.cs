@@ -23,7 +23,6 @@ public class BeezyAttack : MonoBehaviour
 
     void Start()
     {
-
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         playerMovement = GetComponent<BeezyMovement>();
@@ -35,8 +34,15 @@ public class BeezyAttack : MonoBehaviour
 
     void Update()
     {
-        // Only allow attack input if grounded and NOT already attacking, and cooldown has passed
-        if (Input.GetKeyDown(KeyCode.X) && playerMovement.isGrounded && !isAttacking &&
+        // Check if UpArrow or W is being held
+        bool isHoldingUp = Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W);
+
+        // Only allow attack input if:
+        // - NOT holding up
+        // - Player is grounded
+        // - Not already attacking
+        // - Cooldown has passed
+        if (Input.GetKeyDown(KeyCode.X) && !isHoldingUp && playerMovement.isGrounded && !isAttacking &&
             Time.time >= lastAttackTime + attackCooldown)
         {
             // Stop all movement immediately
@@ -50,8 +56,8 @@ public class BeezyAttack : MonoBehaviour
     // Called from animation event
     public void DealDamage()
     {
-        Transform currentAttackPoint =  attackPoint;
-        float currentDamageRadius =  damageRadius;
+        Transform currentAttackPoint = attackPoint;
+        float currentDamageRadius = damageRadius;
 
         if (currentAttackPoint == null)
         {
@@ -88,12 +94,13 @@ public class BeezyAttack : MonoBehaviour
             Gizmos.DrawWireSphere(attackPoint.position, damageRadius);
         }
     }
+
     public void PlayAttackSparks()
     {
         // Enable the ElectricityTrail particle system
         if (AttackSparks != null)
         {
-             AttackSparks.Play();
+            AttackSparks.Play();
         }
     }
 }

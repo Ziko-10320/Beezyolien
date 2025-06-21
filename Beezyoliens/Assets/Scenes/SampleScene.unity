@@ -40825,6 +40825,9 @@ MonoBehaviour:
   DashTrail: {fileID: 223504950}
   DashPoint: {fileID: 965930080}
   startsFacingRight: 1
+  diagonalJumpXForce: 15
+  diagonalJumpYForce: 8
+  diagonalJumpDuration: 0.2
   isFacingRight: 1
   isTouchingWall: 0
 --- !u!50 &2012533341
@@ -40883,7 +40886,7 @@ CapsuleCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
   m_Offset: {x: -0.0146191185, y: 1.333513}
@@ -40907,8 +40910,8 @@ MonoBehaviour:
   wallCheckPoint: {fileID: 1742452953}
   wallCheckRadius: 0.39
   wallStickSpeed: 2
-  wallJumpDistanceX: 5
-  wallJumpDistanceY: 2
+  wallJumpDistanceX: 5.5
+  wallJumpDistanceY: 3.5
   wallJumpDuration: 0.2
   animator: {fileID: 2012533345}
   wallSlideDust: {fileID: 1978721345}
