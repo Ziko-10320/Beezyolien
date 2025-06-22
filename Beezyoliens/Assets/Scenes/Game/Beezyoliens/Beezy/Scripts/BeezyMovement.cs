@@ -9,7 +9,12 @@ public class BeezyMovement : MonoBehaviour
 
     [Header("Jump Settings")]
     public float jumpForce = 12f;
+    public float jumpHoldGravityMultiplier = 3f; // Makes jump fall faster when held
+    public float minJumpVelocity = 5f;          // Minimum jump height (tap)
+    public float maxJumpVelocity = 12f;         // Maximum jump height (full press)
     private bool isJumping = false;
+    private bool isReleasingJump = false;
+    private float jumpReleaseThreshold = 0.3f;  // If released before this time, jump is cut short
     public bool canJump = true;
 
     [Header("GroundCheck Settings")]
@@ -47,7 +52,7 @@ public class BeezyMovement : MonoBehaviour
     private bool usedSecondDash = false;
     private bool dashCooldownStarted = false;
 
-    [Header("References")]
+    [Header("Particules")]
     public Animator animator;
     public ParticleSystem landDust;
     public ParticleSystem jumpDust;
@@ -61,6 +66,7 @@ public class BeezyMovement : MonoBehaviour
     public ParticleSystem DashExplosion;
     public ParticleSystem DashTrail;
     public ParticleSystem DashPoint;
+    public ParticleSystem DiagonalDust;
     public bool startsFacingRight = true;
 
     [Header("Diagonal Jump Settings")]
@@ -69,6 +75,9 @@ public class BeezyMovement : MonoBehaviour
     public float diagonalJumpDuration = 0.3f; // How long the jump lasts
     private bool isDiagonalJumping = false;
     private float diagonalJumpTimer = 0f;
+    private float slideStartTime = -10f; // To track when slide started
+    public float diagonalJumpDelay = 0.1f; // Seconds before diagonal jump allowed
+
 
     private Rigidbody2D rb;
     private float targetSpeed;
@@ -105,17 +114,26 @@ public class BeezyMovement : MonoBehaviour
             var renderer = DashExplosion.GetComponent<ParticleSystemRenderer>();
             renderer.flip = new Vector2(0, 0);
         }
+
+        if (DiagonalDust != null)
+        {
+            var renderer = DiagonalDust.GetComponent<ParticleSystemRenderer>();
+            renderer.flip = new Vector2(0, 0);
+        }
     }
 
     void Update()
     {
         // Slide interrupt with diagonal jump
-        if (Input.GetKeyDown(KeyCode.Space) && isSliding)
+        if (Input.GetKeyDown(KeyCode.Space) && isSliding
+            && Time.time > slideStartTime + diagonalJumpDelay)
         {
             Debug.Log("🚀 Diagonal Jump Triggered!");
             StartDiagonalJump();
+            if (DiagonalDust != null) DiagonalDust.Play();
+            return;
         }
-       
+
         // Only allow input if NOT sliding or dashing
         if (!isSliding && !isDashing && !PlayerAttack.isAttacking)
         {
@@ -136,24 +154,40 @@ public class BeezyMovement : MonoBehaviour
                 }
             }
 
-            /// Jump
+            // Jump Start
             if (Input.GetKeyDown(KeyCode.Space) && isGrounded && canJump)
             {
-                rb.velocity = Vector2.zero;
-                rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
-                animator.SetTrigger("jump");
+                rb.velocity = new Vector2(rb.velocity.x, 0); // Reset vertical speed
+                rb.velocity += Vector2.up * minJumpVelocity; // Start jump
                 isJumping = true;
-
-                // Play jump dust
+                isReleasingJump = false;
+                animator.SetTrigger("jump");
                 if (jumpDust != null)
                 {
                     jumpDust.Play();
                 }
             }
+
+            // Jump Hold
+            if (Input.GetKey(KeyCode.Space) && isJumping)
+            {
+                if (rb.velocity.y < maxJumpVelocity)
+                {
+                    // Apply extra upward boost while holding jump
+                    rb.velocity += Vector2.up * (Physics2D.gravity.y * Time.deltaTime);
+                    rb.velocity += Vector2.up * (Physics2D.gravity.y * (jumpHoldGravityMultiplier - 1) * Time.deltaTime);
+                }
+            }
+
+            // Jump Release
+            if (Input.GetKeyUp(KeyCode.Space))
+            {
+                isReleasingJump = true;
+            }
         }
         
         // Slide Input
-        if (Input.GetKeyDown(KeyCode.C) && isGrounded && !isSliding)
+        if (Input.GetKeyDown(KeyCode.C) && isGrounded && !isSliding && !PlayerAttack.isAttacking)
         {
 
            
@@ -273,6 +307,22 @@ public class BeezyMovement : MonoBehaviour
         // Ground Check
         isGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
 
+        // Custom Jump Gravity
+        if (isJumping)
+        {
+            float gravityMultiplier = 1f;
+
+            if (Input.GetKey(KeyCode.Space))
+            {
+                gravityMultiplier = jumpHoldGravityMultiplier; // Faster fall if still holding jump
+            }
+            else if (rb.velocity.y > 0)
+            {
+                gravityMultiplier = jumpHoldGravityMultiplier * 1.5f; // Cut jump short even more
+            }
+
+            rb.velocity += Physics2D.gravity * (gravityMultiplier - 1) * Time.fixedDeltaTime;
+        }
         // Target Speed Calculation
         if (isMoving && !isSliding && !isDashing && !isTouchingWall)
         {
@@ -312,18 +362,33 @@ public class BeezyMovement : MonoBehaviour
         if (isDiagonalJumping)
         {
             diagonalJumpTimer += Time.fixedDeltaTime;
+
             if (diagonalJumpTimer < diagonalJumpDuration)
             {
-                // Lock horizontal input during jump
-                moveDirection = 0f;
-                // Optionally maintain the initial velocity or keep updating it
+                // During jump → lock to set X/Y velocity
                 float dirX = isFacingRight ? 1 : -1;
                 rb.velocity = new Vector2(dirX * diagonalJumpXForce, diagonalJumpYForce);
             }
             else
             {
+                // After jump duration → let physics take over
                 isDiagonalJumping = false;
-                canFlip = true; // Re-enable flipping after jump ends
+                canFlip = true;
+
+                Debug.Log("Momentum applied after diagonal jump.");
+            }
+        }
+        else if (!isSliding && !isDashing && !PlayerAttack.isAttacking)
+        {
+            // If not sliding/dashing/attacking → apply deceleration
+            float deceleration = 0.92f; // Tweak this to control how fast they slow down
+            Vector2 currentVelocity = rb.velocity;
+
+            // Only affect horizontal movement
+            if (Mathf.Abs(currentVelocity.x) > 0.1f)
+            {
+                currentVelocity.x *= deceleration;
+                rb.velocity = currentVelocity;
             }
         }
 
@@ -368,6 +433,7 @@ public class BeezyMovement : MonoBehaviour
     {
         isSliding = true;
         slideTimer = 0f;
+        slideStartTime = Time.time; // ← Add this line
         animator.SetTrigger("Slide");
         Debug.Log("Slide triggered");
     }
@@ -376,19 +442,30 @@ public class BeezyMovement : MonoBehaviour
     {
         Debug.Log("🚀 Starting Diagonal Jump!");
         isSliding = false;
-        animator.SetTrigger("diagonalJump"); // Make sure this trigger exists
+        animator.SetTrigger("diagonalJump");
         isDiagonalJumping = true;
         diagonalJumpTimer = 0f;
 
-        // Determine horizontal direction
+        // Stop all slide dust effects
+        StopSlideDustEffects();
+
+        // Determine direction
         float dirX = isFacingRight ? 1 : -1;
 
-        // Apply both X and Y forces
-        Vector2 jumpVelocity = new Vector2(dirX * diagonalJumpXForce, diagonalJumpYForce);
-        rb.velocity = jumpVelocity;
+        // Apply diagonal jump velocity
+        rb.velocity = new Vector2(dirX * diagonalJumpXForce, diagonalJumpYForce);
 
         // Disable flip and movement during jump
         canFlip = false;
+    }
+    void StopSlideDustEffects()
+    {
+        if (SlideBurstDust != null) SlideBurstDust.Stop();
+        if (SlideBurstDust2 != null) SlideBurstDust2.Stop();
+        if (SlideDust != null) SlideDust.Stop();
+        if (SlideDust2 != null) SlideDust2.Stop();
+        if (SlideDust3 != null) SlideDust3.Stop();
+        if (SlideDust4 != null) SlideDust4.Stop();
     }
     void StartAirDash(bool upwardDash)
     {
@@ -445,6 +522,14 @@ public class BeezyMovement : MonoBehaviour
             float targetFlipX = isFacingRight ? 0 : 1;
             renderer.flip = new Vector2(targetFlipX, 0);
         }
+
+        if (DiagonalDust != null)
+        {
+            var renderer = DiagonalDust.GetComponent<ParticleSystemRenderer>();
+            float targetFlipX = isFacingRight ? 0 : 1;
+            renderer.flip = new Vector2(targetFlipX, 0);
+        }
+
     }
    
 
