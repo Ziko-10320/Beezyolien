@@ -229,11 +229,11 @@ PrefabInstance:
       objectReference: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.02
+      value: 0.008
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.030999899
+      value: -0.001
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalPosition.z
@@ -241,31 +241,31 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.99959517
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: -0.00088214094
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: -0.0000000018626449
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0.028440796
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -0.101
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: -0.003
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: 3.26
       objectReference: {fileID: 0}
     - target: {fileID: 4088882129871810629, guid: 0f5bb45510906d24d80ded476cb72dfd, type: 3}
       propertyPath: m_SortingOrder
@@ -49479,11 +49479,7 @@ MonoBehaviour:
   moveSpeedMax: 15
   moveSpeedMid: 0
   accelerationTime: 0
-  jumpForce: 18
-  jumpHoldGravityMultiplier: 0
-  minJumpVelocity: 20
-  maxJumpVelocity: 20
-  canJump: 1
+  jumpPower: 21
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -49495,12 +49491,13 @@ MonoBehaviour:
   forwardDashSpeed: 30
   forwardDashDuration: 0.16
   upwardDashSpeed: 15
-  upwardDashDuration: 0.11
+  upwardDashDuration: 0.12
   maxAirDashes: 2
-  dashInterval: 0
-  dashCooldown: 1
-  dashWindowDuration: 1
-  dashRecoveryTime: 2
+  dashInterval: 0.15
+  dashCooldown: 2
+  dashWindowDuration: 1.5
+  dashRecoveryTime: 3
+  secondDashReductionPercent: 0.5
   canFlip: 1
   animator: {fileID: 2012533345}
   landDust: {fileID: 1374448632}
@@ -49520,7 +49517,6 @@ MonoBehaviour:
   diagonalJumpXForce: 23.8
   diagonalJumpYForce: 9.6
   diagonalJumpDuration: 0.27
-  diagonalJumpDelay: 0
   isFacingRight: 1
   isTouchingWall: 0
 --- !u!50 &2012533341
@@ -49604,8 +49600,8 @@ MonoBehaviour:
   wallCheckRadius: 0.39
   wallStickSpeed: 2
   wallJumpDistanceX: 3
-  wallJumpDistanceY: 4
-  wallJumpDuration: 0.2
+  wallJumpDistanceY: 4.37
+  wallJumpDuration: 0.22
   animator: {fileID: 2012533345}
   wallSlideDust: {fileID: 1978721345}
   groundLayer:

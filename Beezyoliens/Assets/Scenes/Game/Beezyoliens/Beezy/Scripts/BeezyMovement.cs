@@ -8,14 +8,11 @@ public class BeezyMovement : MonoBehaviour
     public float accelerationTime = 0.5f;
 
     [Header("Jump Settings")]
-    public float jumpForce = 12f;
-    public float jumpHoldGravityMultiplier = 3f; // Makes jump fall faster when held
-    public float minJumpVelocity = 5f;          // Minimum jump height (tap)
-    public float maxJumpVelocity = 12f;         // Maximum jump height (full press)
+    public float jumpPower = 12f;
     private bool isJumping = false;
-    private bool isReleasingJump = false;
-    private float jumpReleaseThreshold = 0.3f;  // If released before this time, jump is cut short
-    public bool canJump = true;
+    private bool jumpPressedInAir = false;
+    private bool canJump = true;
+
 
     [Header("GroundCheck Settings")]
     public LayerMask groundLayer;
@@ -39,6 +36,13 @@ public class BeezyMovement : MonoBehaviour
     public float dashCooldown = 3f;   // Total cooldown before next set
     public float dashWindowDuration = 0.5f; // Time between dashes before resetting
     public float dashRecoveryTime = 2f;    // Time to fully recover all dashes
+    public float secondDashReductionPercent = 0.4f; // 0.4 = 40% of normal duration
+    // New variables ↓↓↓                                      
+    private float originalForwardDashDuration;
+    private float originalUpwardDashDuration;
+    private bool usedFirstDash = false;
+    private bool usedSecondDash = false;
+
 
     private bool isDashing = false;
     private float dashTimer = 0f;
@@ -49,7 +53,6 @@ public class BeezyMovement : MonoBehaviour
     public bool canFlip = true;
     private float dashWindowTimer = 0f;
     private int dashCharges = 2;
-    private bool usedSecondDash = false;
     private bool dashCooldownStarted = false;
 
     [Header("Particules")]
@@ -75,8 +78,7 @@ public class BeezyMovement : MonoBehaviour
     public float diagonalJumpDuration = 0.3f; // How long the jump lasts
     private bool isDiagonalJumping = false;
     private float diagonalJumpTimer = 0f;
-    private float slideStartTime = -10f; // To track when slide started
-    public float diagonalJumpDelay = 0.1f; // Seconds before diagonal jump allowed
+    private bool justStartedSlideThisFrame = false;
 
 
     private Rigidbody2D rb;
@@ -95,6 +97,9 @@ public class BeezyMovement : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         PlayerAttack = GetComponent<BeezyAttack>(); // This line was missing
         isFacingRight = startsFacingRight;
+
+        originalForwardDashDuration = forwardDashDuration;
+        originalUpwardDashDuration = upwardDashDuration;
 
         // Set dust flip to (0, 0) initially (match editor)
         if (SlideBurstDust != null)
@@ -125,17 +130,17 @@ public class BeezyMovement : MonoBehaviour
     void Update()
     {
         // Slide interrupt with diagonal jump
-        if (Input.GetKeyDown(KeyCode.Space) && isSliding
-            && Time.time > slideStartTime + diagonalJumpDelay)
+        if (Input.GetKeyDown(KeyCode.Space) && isSliding && !justStartedSlideThisFrame)
         {
             Debug.Log("🚀 Diagonal Jump Triggered!");
             StartDiagonalJump();
+
             if (DiagonalDust != null) DiagonalDust.Play();
             return;
         }
 
         // Only allow input if NOT sliding or dashing
-        if (!isSliding && !isDashing && !PlayerAttack.isAttacking)
+        if (!isSliding && !isDashing && !PlayerAttack.isAttacking && !isDiagonalJumping)
         {
             // Input Handling
             moveDirection = Input.GetAxisRaw("Horizontal");
@@ -154,38 +159,28 @@ public class BeezyMovement : MonoBehaviour
                 }
             }
 
-            // Jump Start
-            if (Input.GetKeyDown(KeyCode.Space) && isGrounded && canJump)
-            {
-                rb.velocity = new Vector2(rb.velocity.x, 0); // Reset vertical speed
-                rb.velocity += Vector2.up * minJumpVelocity; // Start jump
-                isJumping = true;
-                isReleasingJump = false;
-                animator.SetTrigger("jump");
-                if (jumpDust != null)
-                {
-                    jumpDust.Play();
-                }
-            }
+        }
+        // Handle Jump Input
+        bool jumpKeyPressedThisFrame = Input.GetKeyDown(KeyCode.Space);
+        bool slideKeyPressedThisFrame = Input.GetKeyDown(KeyCode.C);
 
-            // Jump Hold
-            if (Input.GetKey(KeyCode.Space) && isJumping)
+        // Handle jump input
+        if (jumpKeyPressedThisFrame)
+        {
+            if (!isSliding && !PlayerAttack.isAttacking && canJump)
             {
-                if (rb.velocity.y < maxJumpVelocity)
+                if (isGrounded)
                 {
-                    // Apply extra upward boost while holding jump
-                    rb.velocity += Vector2.up * (Physics2D.gravity.y * Time.deltaTime);
-                    rb.velocity += Vector2.up * (Physics2D.gravity.y * (jumpHoldGravityMultiplier - 1) * Time.deltaTime);
+                    // Grounded → Perform jump immediately
+                    PerformJump();
                 }
-            }
-
-            // Jump Release
-            if (Input.GetKeyUp(KeyCode.Space))
-            {
-                isReleasingJump = true;
+                else
+                {
+                    // Mid-air → record input, but don't jump yet
+                    jumpPressedInAir = true;
+                }
             }
         }
-        
         // Slide Input
         if (Input.GetKeyDown(KeyCode.C) && isGrounded && !isSliding && !PlayerAttack.isAttacking)
         {
@@ -193,7 +188,7 @@ public class BeezyMovement : MonoBehaviour
            
         Debug.Log("Slide key pressed and conditions met");
             StartSlide();
-
+            justStartedSlideThisFrame = true; // ← Set flag to block diagonal jump
             // Play slide burst dust
             if (SlideBurstDust != null) SlideBurstDust.Play();
             if (SlideBurstDust2 != null) SlideBurstDust2.Play();
@@ -206,6 +201,10 @@ public class BeezyMovement : MonoBehaviour
         // Air Dash Input
         if (Input.GetKeyDown(KeyCode.C) && !isGrounded && !isSliding)
         {
+            // Only allow input if NOT attacking or diagonal jumping
+            if (PlayerAttack != null && PlayerAttack.isAttacking)
+                return;
+
             float timeSinceLastDash = Time.time - lastDashTime;
 
             // First dash always allowed
@@ -215,35 +214,29 @@ public class BeezyMovement : MonoBehaviour
                 string dashAnim = upwardDash ? "upwardDash" : "dash";
                 animator.SetTrigger(dashAnim);
 
-                StartAirDash(upwardDash);
+                // Apply reduced duration if it's the second dash
+                float customDuration = upwardDash ? upwardDashDuration : forwardDashDuration;
+
+                if (dashCharges == 1)
+                {
+                    customDuration *= secondDashReductionPercent; // Controlled by inspector
+                }
+
+                StartAirDash(upwardDash, customDuration);
 
                 dashCharges--;
                 lastDashTime = Time.time;
-                usedSecondDash = (dashCharges == 0); // True if we just used second dash
+                usedSecondDash = (dashCharges == 0);
 
-                Debug.Log($"Used Dash. Remaining Charges: {dashCharges}");
+                Debug.Log($"Used Dash. Remaining Charges: {dashCharges}, Duration: {customDuration}");
             }
             else if (!dashCooldownStarted)
             {
-                // Start full recovery only after both dashes used
                 dashCooldownStarted = true;
                 dashCooldownTimer = Time.time + dashRecoveryTime;
             }
         }
-        // Recover second dash if not used in time
-        if (!isDashing && !isGrounded && Time.time - lastDashTime >= dashWindowDuration && dashCharges == 1)
-        {
-            dashCharges = 2;
-            Debug.Log("Recovered second dash");
-        }
 
-        // If both dashes used → start full recovery
-        if (usedSecondDash && Time.time >= dashCooldownTimer && dashCooldownStarted)
-        {
-            dashCharges = 2;
-            dashCooldownStarted = false;
-            Debug.Log("All dashes recovered!");
-        }
 
         // Falling and Landing Logic
         bool isFallingNow = rb.velocity.y < 0 && !isGrounded;
@@ -293,6 +286,9 @@ public class BeezyMovement : MonoBehaviour
                 animator.SetBool("isLanding", false);
             }
         }
+
+        // Reset the flag at the end of the frame
+        justStartedSlideThisFrame = false;
     }
 
     void FixedUpdate()
@@ -307,22 +303,13 @@ public class BeezyMovement : MonoBehaviour
         // Ground Check
         isGrounded = Physics2D.OverlapCircle(groundCheckPoint.position, groundCheckRadius, groundLayer);
 
-        // Custom Jump Gravity
-        if (isJumping)
+        // If landed and jump was pressed in air → perform jump
+        if (isGrounded && jumpPressedInAir && canJump)
         {
-            float gravityMultiplier = 1f;
-
-            if (Input.GetKey(KeyCode.Space))
-            {
-                gravityMultiplier = jumpHoldGravityMultiplier; // Faster fall if still holding jump
-            }
-            else if (rb.velocity.y > 0)
-            {
-                gravityMultiplier = jumpHoldGravityMultiplier * 1.5f; // Cut jump short even more
-            }
-
-            rb.velocity += Physics2D.gravity * (gravityMultiplier - 1) * Time.fixedDeltaTime;
+            PerformJump();
+            jumpPressedInAir = false; // Reset flag
         }
+
         // Target Speed Calculation
         if (isMoving && !isSliding && !isDashing && !isTouchingWall)
         {
@@ -332,7 +319,7 @@ public class BeezyMovement : MonoBehaviour
         {
             targetSpeed = 0f;
         }
-
+        
         // Smooth acceleration using Lerp
         currentSpeed = Mathf.Lerp(currentSpeed, targetSpeed, Time.fixedDeltaTime / accelerationTime);
 
@@ -427,13 +414,45 @@ public class BeezyMovement : MonoBehaviour
                 // Optional: show UI or visual feedback
             }
         }
+        // If grounded or dash window expired → reset dash durations and charges
+        if (isGrounded || Time.time - lastDashTime >= dashWindowDuration)
+        {
+            dashCharges = 2;
+            usedSecondDash = false;
+            dashCooldownStarted = false;
+
+            forwardDashDuration = originalForwardDashDuration;
+            upwardDashDuration = originalUpwardDashDuration;
+
+            Debug.Log("Dash reset: grounded or timeout");
+        }
+
+        // If both dashes used → start full recovery
+        if (usedSecondDash && Time.time >= dashCooldownTimer && dashCooldownStarted)
+        {
+            dashCharges = 2;
+            usedSecondDash = false;
+            dashCooldownStarted = false;
+
+            forwardDashDuration = originalForwardDashDuration;
+            upwardDashDuration = originalUpwardDashDuration;
+
+            Debug.Log("All dashes recovered after cooldown!");
+        }
+    }
+
+    void PerformJump()
+    {
+        rb.velocity = new Vector2(rb.velocity.x, 0); // Reset Y velocity
+        rb.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse); // Apply jump force
+        animator.SetTrigger("jump");
+        if (jumpDust != null) jumpDust.Play();
     }
 
     void StartSlide()
     {
         isSliding = true;
         slideTimer = 0f;
-        slideStartTime = Time.time; // ← Add this line
         animator.SetTrigger("Slide");
         Debug.Log("Slide triggered");
     }
@@ -467,7 +486,7 @@ public class BeezyMovement : MonoBehaviour
         if (SlideDust3 != null) SlideDust3.Stop();
         if (SlideDust4 != null) SlideDust4.Stop();
     }
-    void StartAirDash(bool upwardDash)
+    void StartAirDash(bool upwardDash, float customDuration = -1f)
     {
         isDashing = true;
         dashTimer = 0f;
@@ -476,20 +495,30 @@ public class BeezyMovement : MonoBehaviour
         if (upwardDash)
         {
             dashDirection = Vector2.up;
+            if (customDuration <= 0)
+                upwardDashDuration = originalUpwardDashDuration;
+            else
+                upwardDashDuration = customDuration;
         }
         else
         {
             float dir = isFacingRight ? 1 : -1;
             dashDirection = new Vector2(dir, 0);
+            if (customDuration <= 0)
+                forwardDashDuration = originalForwardDashDuration;
+            else
+                forwardDashDuration = customDuration;
         }
+
         if (DashExplosion != null) DashExplosion.Play();
         if (DashTrail != null) DashTrail.Play();
         if (DashPoint != null) DashPoint.Play();
 
-        // Prevent flip during dash
+        rb.gravityScale = 0f;
+        rb.velocity = dashDirection * (upwardDash ? upwardDashSpeed : forwardDashSpeed);
+
         canFlip = false;
     }
-
     public void Flip()
     {
         if (!canFlip) return;
